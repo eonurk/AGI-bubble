@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGI Research Monitor</title>
+    <style>
+        body {
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #000;
+            color: #0ff;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background-color: rgba(0, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,255,255,0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0ff;
+        }
+        p {
+            font-size: 1.2em;
+            margin: 15px 0;
+        }
+        #ai-status {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f00;
+            text-shadow: 0 0 10px #f00;
+        }
+        #research-focus {
+            font-style: italic;
+            color: #f0f;
+            text-shadow: 0 0 10px #f0f;
+        }
+        .matrix-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .container {
+            animation: pulse 2s infinite;
+        }
+        .survey-link {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #ff0;
+            text-shadow: 0 0 10px #ff0;
+        }
+        .survey-link a {
+            color: #ff0;
+            text-decoration: none;
+        }
+        .survey-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <canvas class="matrix-bg" id="matrix"></canvas>
+    <div class="container">
+        <h1>AGI Monitor</h1>
+        <p id="date"></p>
+        <p id="ai-status">AGI Status: Narrow AI in Various Domains</p>
+        
+        <p class="survey-link" id="survey-info">
+            Participate in AGI Predictions Survey: 
+        </p>
+        <a class="survey-link" href="https://forms.gle/Y2L2mpNV78Xtax9h6" target="_blank">Share Your Thoughts</a>
+    </div>
+
+    <script>
+        function updateDate() {
+            const now = new Date();
+            document.getElementById('date').textContent = `Current Date: ${now.toLocaleString()}`;
+        }
+
+        function updateResearchFocus() {
+            const focuses = [
+                "Machine Learning Algorithms",
+                "Neural Network Architectures",
+                "Natural Language Processing",
+                "Computer Vision",
+                "Reinforcement Learning",
+                "Ethical AI Development",
+                "Cognitive Architectures",
+                "Knowledge Representation"
+            ];
+            const randomFocus = focuses[Math.floor(Math.random() * focuses.length)];
+            document.getElementById('research-focus').textContent = `Current research focus: ${randomFocus}`;
+        }
+
+        // Matrix rain effect
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const katakana = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const nums = '0123456789';
+        const alphabet = katakana + latin + nums;
+
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+
+        const rainDrops = [];
+
+        for (let x = 0; x < columns; x++) {
+            rainDrops[x] = 1;
+        }
+
+        const draw = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#f00';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+
+                if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    rainDrops[i] = 0;
+                }
+                rainDrops[i]++;
+            }
+        };
+
+        setInterval(draw, 30);
+
+        updateDate();
+        updateResearchFocus();
+        setInterval(updateDate, 1000);
+        setInterval(updateResearchFocus, 5000);
+
+        function updateSurveyInfo() {
+            const surveyInfo = [
+                "AGI achievement predictions",
+                "Expert opinions on AI progress",
+                "Public perception of AGI timeline"
+            ];
+            const randomInfo = surveyInfo[Math.floor(Math.random() * surveyInfo.length)];
+            document.getElementById('survey-info').textContent = 
+                `Participate in AGI Predictions Survey (${randomInfo}):`;
+        }
+
+        updateSurveyInfo();
+        setInterval(updateSurveyInfo, 7000);
+    </script>
+</body>
+</html>
