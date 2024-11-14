@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PieChart, Pie, Cell, Tooltip } from "recharts";
+import { PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { ResponsiveContainer } from "recharts";
+
+type TimelineDataPoint = {
+	year: number;
+	count: number;
+};
 
 function App() {
 	const [bubbleData, setBubbleData] = useState([
@@ -19,6 +26,8 @@ function App() {
 		{ name: "Median", date: "2034" },
 		{ name: "Latest", date: "2074" },
 	]);
+
+	const [timelineData, setTimelineData] = useState<TimelineDataPoint[]>([]);
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [totalResponses, setTotalResponses] = useState(0);
@@ -74,6 +83,29 @@ function App() {
 					{ name: "Median", date: medianDate },
 					{ name: "Latest", date: latestDate },
 				]);
+
+				// Process timeline data from row 11 (which contains the years)
+				const years = rows[11]
+					.slice(1) // Skip the "Years" label
+					.map((year) => parseInt(year.trim()))
+					.filter((year) => !isNaN(year))
+					.sort((a, b) => a - b);
+
+				// Create histogram data with year-by-year counts
+				const yearCounts: { [key: number]: number } = {};
+
+				// Count occurrences of each year
+				years.forEach((year) => {
+					yearCounts[year] = (yearCounts[year] || 0) + 1;
+				});
+
+				// Convert to timeline data format
+				setTimelineData(
+					Object.entries(yearCounts).map(([year, count]) => ({
+						year: parseInt(year),
+						count: count,
+					}))
+				);
 			} catch (error) {
 				console.error("Error fetching data:", error);
 				// Set default values in case of error
@@ -201,6 +233,36 @@ function App() {
 							</div>
 						))}
 					</div>
+
+					<div className="mt-8">
+						<h3 className="text-lg font-semibold mb-2">
+							AGI Timeline Distribution
+						</h3>
+						<div className="flex justify-center w-full mt-6 overflow-x-auto">
+							<ResponsiveContainer width="100%" height={300} minWidth={300}>
+								<BarChart data={timelineData}>
+									<XAxis
+										dataKey="year"
+										label={{ value: "Year", position: "bottom" }}
+										domain={["dataMin", "dataMax"]}
+										type="number"
+										ticks={timelineData.map((d) => d.year)}
+									/>
+									<YAxis
+										label={{
+											angle: -90,
+											position: "left",
+										}}
+									/>
+									<Tooltip
+										labelFormatter={(year) => `Year: ${year}`}
+										formatter={(value) => [`${value} responses`]}
+									/>
+									<Bar dataKey="count" fill="#8884d8" />
+								</BarChart>
+							</ResponsiveContainer>
+						</div>
+					</div>
 				</CardContent>
 			</Card>
 			<Button
@@ -211,6 +273,39 @@ function App() {
 			>
 				<span className="mr-2 animate-pulse">Take the Survey →</span>
 			</Button>
+
+			<Button
+				onClick={async () => {
+					try {
+						if (navigator.share) {
+							await navigator.share({
+								title: "AGI Bubble Survey",
+								text: "Check out this survey about AGI predictions!",
+								url: window.location.href,
+							});
+						} else {
+							// Fallback to copying to clipboard
+							await navigator.clipboard.writeText(window.location.href);
+							alert("Link copied to clipboard!");
+						}
+					} catch (error) {
+						console.error("Error sharing:", error);
+						// Fallback to copying to clipboard if sharing fails
+						try {
+							await navigator.clipboard.writeText(window.location.href);
+							alert("Link copied to clipboard!");
+						} catch (err) {
+							console.error("Error copying to clipboard:", err);
+						}
+					}
+				}}
+				className="mt-4 w-full max-w-4xl text-lg py-6 bg-blue-500 hover:bg-blue-600"
+				size="lg"
+				variant="default"
+			>
+				<span className="mr-2">Share</span>
+			</Button>
+
 			<div className="text-sm mt-4">
 				Created by{" "}
 				<a href="https://eonurk.com" target="_blank" rel="noopener noreferrer">
