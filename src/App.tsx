@@ -4,10 +4,20 @@ import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell } from "recharts";
 import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { ResponsiveContainer } from "recharts";
+import * as d3 from "d3";
+import cloud from "d3-cloud";
 
 type TimelineDataPoint = {
 	year: number;
 	count: number;
+};
+
+type WordData = {
+	text: string;
+	size: number;
+	x?: number;
+	y?: number;
+	rotate?: number;
 };
 
 function App() {
@@ -31,6 +41,7 @@ function App() {
 
 	const [isLoading, setIsLoading] = useState(true);
 	const [totalResponses, setTotalResponses] = useState(0);
+	const [wordCloudData, setWordCloudData] = useState<WordData[]>([]);
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -67,6 +78,34 @@ function App() {
 					rows[8] && rows[8][1]
 						? rows[8][1].trim().match(/\d{4}/)?.[0] || "N/A"
 						: "N/A";
+
+				const remarks = rows[12][1] || "";
+				console.log("remarks:", remarks);
+				// Process remarks for word cloud
+				const words = remarks
+					.toLowerCase()
+					.split(/\W+/)
+					.filter(
+						(word) =>
+							word.length > 3 &&
+							!["and", "the", "this", "that", "with", "will"].includes(word)
+					);
+
+				const wordCount: { [key: string]: number } = {};
+				words.forEach((word) => {
+					wordCount[word] = (wordCount[word] || 0) + 1;
+				});
+
+				// Convert to array and sort by frequency
+				const wordData = Object.entries(wordCount)
+					.map(([text, count]) => ({
+						text,
+						size: 10 + count * 10, // Scale the size based on frequency
+					}))
+					.sort((a, b) => b.size - a.size)
+					.slice(0, 50); // Take top 50 words
+
+				setWordCloudData(wordData);
 
 				setBubbleData([
 					{ name: "Yes", value: bubbleYes },
@@ -132,6 +171,70 @@ function App() {
 		return () => clearInterval(interval);
 	}, []);
 
+	useEffect(() => {
+		if (wordCloudData.length === 0) return;
+
+		// Clear any existing word cloud
+		d3.select("#word-cloud").selectAll("*").remove();
+
+		const width = window.innerWidth < 768 ? 300 : 800;
+		const height = window.innerWidth < 768 ? 300 : 400;
+
+		const layout = cloud().size([width, height]);
+
+		layout
+			.words(wordCloudData)
+			.padding(5)
+			.rotate(() => (Math.random() < 0.5 ? 0 : 90))
+			.font("Impact")
+			.fontSize((d: unknown) => (d as WordData).size)
+			.on("end", draw);
+
+		layout.start();
+
+		function draw(words: WordData[]) {
+			const svg = d3
+				.select("#word-cloud")
+				.append("svg")
+				.attr("width", "100%")
+				.attr("height", height)
+				.attr("viewBox", `0 0 ${width} ${height}`)
+				.append("g")
+				.attr("transform", `translate(${width / 2},${height / 2})`);
+
+			// Define a better color palette
+			const colors = [
+				"#2563eb", // Blue
+				"#7c3aed", // Purple
+				"#db2777", // Pink
+				"#059669", // Emerald
+				"#0891b2", // Cyan
+				"#4f46e5", // Indigo
+				"#6366f1", // Violet
+				"#0ea5e9", // Sky
+			];
+
+			svg
+				.selectAll("text")
+				.data(words)
+				.enter()
+				.append("text")
+				.style("font-size", (d) => `${d.size}px`)
+				.style("font-family", "'Inter', 'Helvetica', sans-serif") // Changed from Impact
+				.style("fill", () => colors[Math.floor(Math.random() * colors.length)]) // Using our new palette
+				.style("font-weight", "500") // Added for better readability
+				.attr("text-anchor", "middle")
+				.attr(
+					"transform",
+					(d: unknown) =>
+						`translate(${(d as WordData).x},${(d as WordData).y})rotate(${
+							(d as WordData).rotate
+						})`
+				)
+				.text((d) => (d as WordData).text);
+		}
+	}, [wordCloudData]);
+
 	const COLORS = ["#0088FE", "#FF8042"];
 
 	const handleFormClick = () => {
@@ -142,7 +245,18 @@ function App() {
 		<div className="flex flex-col items-center min-h-screen bg-background p-4">
 			<Card className="max-w-4xl w-full mx-4 p-4 mt-4">
 				<CardHeader>
-					<h2 className="text-2xl font-bold">AGI Bubble Survey</h2>
+					<div className="flex justify-between items-center">
+						<h2 className="text-2xl font-bold">
+							<Button
+								onClick={handleFormClick}
+								className="text-lg py-5 mb-2 "
+								size="lg"
+								variant="default"
+							>
+								<span className="mr-2 ">AGI Bubble Survey →</span>
+							</Button>
+						</h2>
+					</div>
 					<div className="text-lg">
 						Will we achieve human-level artificial intelligence in our lifetime?
 						Join others in sharing your prediction and see what the community
@@ -262,6 +376,13 @@ function App() {
 								</BarChart>
 							</ResponsiveContainer>
 						</div>
+					</div>
+
+					<div className="mt-8">
+						<h3 className="text-lg font-semibold mb-2">
+							Most Frequently Mentioned Words
+						</h3>
+						<div id="word-cloud" className="w-full overflow-hidden" />
 					</div>
 				</CardContent>
 			</Card>
