@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PieChart, Pie, Cell } from "recharts";
-import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
-import { ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import * as d3 from "d3";
 import cloud from "d3-cloud";
+import { motion } from "framer-motion";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { ConsensusMeter } from "@/components/ConsensusMeter";
+import { PredictionSpread } from "@/components/PredictionSpread";
+import { Loader2, Share2, ExternalLink, TrendingUp, Calendar, MessageSquare } from "lucide-react";
 
 type TimelineDataPoint = {
 	year: number;
@@ -22,26 +26,28 @@ type WordData = {
 
 function App() {
 	const [bubbleData, setBubbleData] = useState([
-		{ name: "Yes", value: 2 },
-		{ name: "No", value: 6 },
+		{ name: "Yes", value: 0 },
+		{ name: "No", value: 0 },
 	]);
 
 	const [achievableData, setAchievableData] = useState([
-		{ name: "Yes", value: 8 },
+		{ name: "Yes", value: 0 },
 		{ name: "No", value: 0 },
 	]);
 
 	const [dateData, setDateData] = useState([
-		{ name: "Earliest", date: "1989" },
-		{ name: "Median", date: "2034" },
-		{ name: "Latest", date: "2074" },
+		{ name: "Earliest", date: "..." },
+		{ name: "Median", date: "..." },
+		{ name: "Latest", date: "..." },
 	]);
 
 	const [timelineData, setTimelineData] = useState<TimelineDataPoint[]>([]);
-
 	const [isLoading, setIsLoading] = useState(true);
 	const [totalResponses, setTotalResponses] = useState(0);
 	const [wordCloudData, setWordCloudData] = useState<WordData[]>([]);
+
+	// New state for analysis components
+	const [predictionStats, setPredictionStats] = useState({ earliest: 0, latest: 0, median: 0 });
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -51,61 +57,45 @@ function App() {
 					"https://docs.google.com/spreadsheets/d/e/2PACX-1vS7Zdo-njYucXO4WdaTWfoYMBreq6FcmSAW63JC81yaTfSdSMknODd-oFBzR0lCtTxOGns_utWI-5J0/pub?gid=24394597&single=true&output=csv"
 				);
 
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				}
+				if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
 				const csvText = await response.text();
 				const rows = csvText.split("\n").map((row) => row.split(","));
-				console.log(rows);
+
 				setTotalResponses(parseInt(rows[1][1]) || 0);
-				// Parse the summary data
+
 				const bubbleYes = parseInt(rows[2][1]) || 0;
 				const bubbleNo = parseInt(rows[3][1]) || 0;
 				const achievableYes = parseInt(rows[4][1]) || 0;
 				const achievableNo = parseInt(rows[5][1]) || 0;
 
-				// Parse dates with more careful handling
-				const earliestDate =
-					rows[6] && rows[6][1]
-						? rows[6][1].trim().match(/\d{4}/)?.[0] || "N/A"
-						: "N/A";
-				const latestDate =
-					rows[7] && rows[7][1]
-						? rows[7][1].trim().match(/\d{4}/)?.[0] || "N/A"
-						: "N/A";
-				const medianDate =
-					rows[8] && rows[8][1]
-						? rows[8][1].trim().match(/\d{4}/)?.[0] || "N/A"
-						: "N/A";
+				const getYear = (row: string[]) => row && row[1] ? row[1].trim().match(/\d{4}/)?.[0] || "N/A" : "N/A";
+				const earliestYear = parseInt(getYear(rows[6]));
+				const latestYear = parseInt(getYear(rows[7]));
+				const medianYear = parseInt(getYear(rows[8]));
 
-				const remarks = rows[12][1] || "";
-				console.log("remarks:", remarks);
-				// Process remarks for word cloud
-				const words = remarks
-					.toLowerCase()
-					.split(/\W+/)
-					.filter(
-						(word) =>
-							word.length > 3 &&
-							!["and", "the", "this", "that", "with", "will"].includes(word)
-					);
+				setDateData([
+					{ name: "Earliest", date: isNaN(earliestYear) ? "N/A" : earliestYear.toString() },
+					{ name: "Median", date: isNaN(medianYear) ? "N/A" : medianYear.toString() },
+					{ name: "Latest", date: isNaN(latestYear) ? "N/A" : latestYear.toString() },
+				]);
 
-				const wordCount: { [key: string]: number } = {};
-				words.forEach((word) => {
-					wordCount[word] = (wordCount[word] || 0) + 1;
+				setPredictionStats({
+					earliest: isNaN(earliestYear) ? new Date().getFullYear() : earliestYear,
+					latest: isNaN(latestYear) ? new Date().getFullYear() + 10 : latestYear,
+					median: isNaN(medianYear) ? new Date().getFullYear() + 5 : medianYear,
 				});
 
-				// Convert to array and sort by frequency
-				const wordData = Object.entries(wordCount)
-					.map(([text, count]) => ({
-						text,
-						size: 10 + count * 10, // Scale the size based on frequency
-					}))
-					.sort((a, b) => b.size - a.size)
-					.slice(0, 50); // Take top 50 words
+				const remarks = rows[12][1] || "";
+				const words = remarks.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !["and", "the", "this", "that", "with", "will", "have", "from"].includes(w));
 
-				setWordCloudData(wordData);
+				const wordCount: { [key: string]: number } = {};
+				words.forEach(w => wordCount[w] = (wordCount[w] || 0) + 1);
+
+				setWordCloudData(Object.entries(wordCount)
+					.map(([text, count]) => ({ text, size: 10 + count * 10 }))
+					.sort((a, b) => b.size - a.size)
+					.slice(0, 50));
 
 				setBubbleData([
 					{ name: "Yes", value: bubbleYes },
@@ -117,50 +107,14 @@ function App() {
 					{ name: "No", value: achievableNo },
 				]);
 
-				setDateData([
-					{ name: "Earliest", date: earliestDate },
-					{ name: "Median", date: medianDate },
-					{ name: "Latest", date: latestDate },
-				]);
-
-				// Process timeline data from row 11 (which contains the years)
-				const years = rows[11]
-					.slice(1) // Skip the "Years" label
-					.map((year) => parseInt(year.trim()))
-					.filter((year) => !isNaN(year))
-					.sort((a, b) => a - b);
-
-				// Create histogram data with year-by-year counts
+				const years = rows[11].slice(1).map(y => parseInt(y.trim())).filter(y => !isNaN(y)).sort((a, b) => a - b);
 				const yearCounts: { [key: number]: number } = {};
+				years.forEach(y => yearCounts[y] = (yearCounts[y] || 0) + 1);
 
-				// Count occurrences of each year
-				years.forEach((year) => {
-					yearCounts[year] = (yearCounts[year] || 0) + 1;
-				});
+				setTimelineData(Object.entries(yearCounts).map(([year, count]) => ({ year: parseInt(year), count })));
 
-				// Convert to timeline data format
-				setTimelineData(
-					Object.entries(yearCounts).map(([year, count]) => ({
-						year: parseInt(year),
-						count: count,
-					}))
-				);
 			} catch (error) {
 				console.error("Error fetching data:", error);
-				// Set default values in case of error
-				setBubbleData([
-					{ name: "Yes", value: 0 },
-					{ name: "No", value: 0 },
-				]);
-				setAchievableData([
-					{ name: "Yes", value: 0 },
-					{ name: "No", value: 0 },
-				]);
-				setDateData([
-					{ name: "Earliest", date: "N/A" },
-					{ name: "Median", date: "N/A" },
-					{ name: "Latest", date: "N/A" },
-				]);
 			} finally {
 				setIsLoading(false);
 			}
@@ -173,266 +127,320 @@ function App() {
 
 	useEffect(() => {
 		if (wordCloudData.length === 0) return;
-
-		// Clear any existing word cloud
 		d3.select("#word-cloud").selectAll("*").remove();
 
-		const width = window.innerWidth < 768 ? 300 : 800;
-		const height = window.innerWidth < 768 ? 300 : 400;
+		const width = window.innerWidth < 768 ? 300 : 600;
+		const height = 300;
 
-		const layout = cloud().size([width, height]);
-
-		layout
+		cloud().size([width, height])
 			.words(wordCloudData)
 			.padding(5)
 			.rotate(() => (Math.random() < 0.5 ? 0 : 90))
-			.font("Impact")
-			.fontSize((d: unknown) => (d as WordData).size)
-			.on("end", draw);
-
-		layout.start();
+			.font("Inter")
+			.fontSize((d: any) => d.size)
+			.on("end", draw)
+			.start();
 
 		function draw(words: WordData[]) {
-			const svg = d3
-				.select("#word-cloud")
-				.append("svg")
+			const svg = d3.select("#word-cloud").append("svg")
 				.attr("width", "100%")
 				.attr("height", height)
 				.attr("viewBox", `0 0 ${width} ${height}`)
 				.append("g")
 				.attr("transform", `translate(${width / 2},${height / 2})`);
 
-			// Define a better color palette
-			const colors = [
-				"#2563eb", // Blue
-				"#7c3aed", // Purple
-				"#db2777", // Pink
-				"#059669", // Emerald
-				"#0891b2", // Cyan
-				"#4f46e5", // Indigo
-				"#6366f1", // Violet
-				"#0ea5e9", // Sky
-			];
+			const colors = ["#3b82f6", "#8b5cf6", "#ec4899", "#10b981", "#06b6d4"];
 
-			svg
-				.selectAll("text")
+			svg.selectAll("text")
 				.data(words)
-				.enter()
-				.append("text")
-				.style("font-size", (d) => `${d.size}px`)
-				.style("font-family", "'Inter', 'Helvetica', sans-serif") // Changed from Impact
-				.style("fill", () => colors[Math.floor(Math.random() * colors.length)]) // Using our new palette
-				.style("font-weight", "500") // Added for better readability
+				.enter().append("text")
+				.style("font-size", d => `${d.size}px`)
+				.style("font-family", "Inter")
+				.style("fill", () => colors[Math.floor(Math.random() * colors.length)])
+				.style("font-weight", "600")
 				.attr("text-anchor", "middle")
-				.attr(
-					"transform",
-					(d: unknown) =>
-						`translate(${(d as WordData).x},${(d as WordData).y})rotate(${
-							(d as WordData).rotate
-						})`
-				)
-				.text((d) => (d as WordData).text);
+				.attr("transform", (d: any) => `translate(${d.x},${d.y})rotate(${d.rotate})`)
+				.text(d => d.text);
 		}
 	}, [wordCloudData]);
 
-	const COLORS = ["#0088FE", "#FF8042"];
+	const COLORS = ["#3b82f6", "#1e293b"]; // Primary Blue & Dark Slate
+	const COLORS_ACHIEVABLE = ["#10b981", "#1e293b"]; // Emerald & Dark Slate
 
-	const handleFormClick = () => {
-		window.open("https://forms.gle/Y2L2mpNV78Xtax9h6", "_blank");
+	const handleFormClick = () => window.open("https://forms.gle/Y2L2mpNV78Xtax9h6", "_blank");
+
+	const containerVariants = {
+		hidden: { opacity: 0 },
+		visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+	};
+
+	const itemVariants = {
+		hidden: { y: 20, opacity: 0 },
+		visible: { y: 0, opacity: 1 }
 	};
 
 	return (
-		<div className="flex flex-col items-center min-h-screen bg-background p-4">
-			<Card className="max-w-4xl w-full mx-4 p-4 mt-4">
-				<CardHeader>
-					<div className="flex justify-between items-center">
-						<h2 className="text-2xl font-bold">
-							<Button
-								onClick={handleFormClick}
-								className="text-lg py-5 mb-2 "
-								size="lg"
-								variant="default"
-							>
-								<span className="mr-2 ">AGI Bubble Survey →</span>
+		<div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/20">
+			<Header />
+
+			<main className="flex-1 container mx-auto px-4 py-8 md:py-12 max-w-7xl">
+				<motion.div
+					initial="hidden"
+					animate="visible"
+					variants={containerVariants}
+					className="space-y-8"
+				>
+					{/* Hero Section */}
+					<motion.div variants={itemVariants} className="text-center space-y-6 max-w-3xl mx-auto mb-12">
+						<div className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+							<span className="relative flex h-2 w-2 mr-2">
+								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+								<span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+							</span>
+							Live Community Data
+						</div>
+						<h1 className="text-4xl md:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+							The Future of AGI
+						</h1>
+						<p className="text-xl text-muted-foreground leading-relaxed">
+							Will we achieve human-level artificial intelligence in our lifetime?
+							Explore what the community thinks about the timeline and feasibility of AGI.
+						</p>
+						<div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+							<Button onClick={handleFormClick} size="lg" className="text-lg px-8 h-14 rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">
+								Take the Survey <ExternalLink className="ml-2 w-5 h-5" />
 							</Button>
-						</h2>
-					</div>
-					<div className="text-lg">
-						Will we achieve human-level artificial intelligence in our lifetime?
-						Join others in sharing your prediction and see what the community
-						thinks about the future of AI.
-					</div>
-				</CardHeader>
-				<CardContent>
+							<Button
+								variant="outline"
+								size="lg"
+								className="text-lg px-8 h-14 rounded-full"
+								onClick={async () => {
+									try {
+										await navigator.clipboard.writeText(window.location.href);
+										// You might want to add a toast here
+										alert("Link copied!");
+									} catch (e) { console.error(e); }
+								}}
+							>
+								Share Insights <Share2 className="ml-2 w-5 h-5" />
+							</Button>
+						</div>
+					</motion.div>
+
+
+
 					{isLoading ? (
-						<div className="flex justify-center items-center h-[300px]">
-							Loading data...
+						<div className="flex flex-col items-center justify-center h-[400px] space-y-4">
+							<Loader2 className="w-12 h-12 animate-spin text-primary" />
+							<p className="text-muted-foreground">Loading community data...</p>
 						</div>
 					) : (
-						<>
-							<div className="mb-4 text-sm text-muted-foreground">
-								Total Responses: {totalResponses || "N/A"} <br />
-								Last Updated:{" "}
-								{new Date().toLocaleString(undefined, {
-									year: "numeric",
-									month: "short",
-									day: "numeric",
-									hour: "2-digit",
-									minute: "2-digit",
-									hour12: true,
-								})}
-							</div>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								<div>
-									<h3 className="text-lg font-semibold mb-2">
-										Are we in an AGI bubble?
-									</h3>
-									<PieChart width={300} height={300}>
-										<Pie
-											data={bubbleData}
-											cx={150}
-											cy={150}
-											labelLine={false}
-											label={({ name, value }) => `${name}: ${value}`}
-											outerRadius={80}
-											fill="#8884d8"
-											dataKey="value"
-										>
-											{bubbleData.map((_entry, index) => (
-												<Cell
-													key={`cell-${index}`}
-													fill={COLORS[index % COLORS.length]}
-												/>
-											))}
-										</Pie>
-										<Tooltip />
-									</PieChart>
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+
+							{/* Stats Cards */}
+							<motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+											<MessageSquare className="w-4 h-4" /> Total Responses
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="text-4xl font-bold">{totalResponses}</div>
+										<p className="text-xs text-muted-foreground mt-1">
+											Last updated: {new Date().toLocaleDateString()}
+										</p>
+									</CardContent>
+								</Card>
+
+								<div className="grid grid-cols-1 gap-4">
+									{dateData.map((entry) => (
+										<Card key={entry.name} className="bg-card/50 backdrop-blur border-primary/10">
+											<CardHeader className="pb-2">
+												<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+													<Calendar className="w-4 h-4" /> {entry.name} Prediction
+												</CardTitle>
+											</CardHeader>
+											<CardContent>
+												<div className="text-3xl font-bold text-primary">{entry.date}</div>
+											</CardContent>
+										</Card>
+									))}
 								</div>
-								<div>
-									<h3 className="text-lg font-semibold mb-2">
-										Is AGI achievable?
-									</h3>
-									<PieChart width={300} height={300}>
-										<Pie
-											data={achievableData}
-											cx={150}
-											cy={150}
-											labelLine={false}
-											label={({ name, value }) => `${name}: ${value}`}
-											outerRadius={80}
-											fill="#8884d8"
-											dataKey="value"
-										>
-											{achievableData.map((_entry, index) => (
-												<Cell
-													key={`cell-${index}`}
-													fill={COLORS[index % COLORS.length]}
-												/>
+							</motion.div>
+
+							{/* Main Charts */}
+							<motion.div variants={itemVariants} className="lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader>
+										<CardTitle>Are we in an AGI bubble?</CardTitle>
+									</CardHeader>
+									<CardContent className="flex flex-col items-center">
+										<div className="w-[200px] h-[200px] relative">
+											<ResponsiveContainer width="100%" height="100%">
+												<PieChart>
+													<Pie
+														data={bubbleData}
+														innerRadius={60}
+														outerRadius={80}
+														paddingAngle={5}
+														dataKey="value"
+														stroke="none"
+													>
+														{bubbleData.map((_, index) => (
+															<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+														))}
+													</Pie>
+													<Tooltip
+														contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+														itemStyle={{ color: 'hsl(var(--foreground))' }}
+													/>
+												</PieChart>
+											</ResponsiveContainer>
+											<div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+												<span className="text-3xl font-bold">
+													{Math.round((bubbleData.find(d => d.name === "Yes")?.value || 0) / ((bubbleData.find(d => d.name === "Yes")?.value || 0) + (bubbleData.find(d => d.name === "No")?.value || 0) || 1) * 100)}%
+												</span>
+												<span className="text-xs text-muted-foreground uppercase tracking-wider">Yes</span>
+											</div>
+										</div>
+										<div className="flex gap-6 mt-4">
+											{bubbleData.map((entry, index) => (
+												<div key={entry.name} className="flex items-center gap-2">
+													<div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+													<span className="text-sm font-medium text-muted-foreground">{entry.name}</span>
+												</div>
 											))}
-										</Pie>
-										<Tooltip />
-									</PieChart>
-								</div>
-							</div>
-						</>
-					)}
+										</div>
+									</CardContent>
+								</Card>
 
-					<h3 className="text-lg font-semibold mb-2">Predicted AGI Timeline</h3>
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader>
+										<CardTitle>Is AGI achievable?</CardTitle>
+									</CardHeader>
+									<CardContent className="flex flex-col items-center">
+										<div className="w-[200px] h-[200px] relative">
+											<ResponsiveContainer width="100%" height="100%">
+												<PieChart>
+													<Pie
+														data={achievableData}
+														innerRadius={60}
+														outerRadius={80}
+														paddingAngle={5}
+														dataKey="value"
+														stroke="none"
+													>
+														{achievableData.map((_, index) => (
+															<Cell key={`cell-${index}`} fill={COLORS_ACHIEVABLE[index % COLORS_ACHIEVABLE.length]} />
+														))}
+													</Pie>
+													<Tooltip
+														contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+														itemStyle={{ color: 'hsl(var(--foreground))' }}
+													/>
+												</PieChart>
+											</ResponsiveContainer>
+											<div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+												<span className="text-3xl font-bold">
+													{Math.round((achievableData.find(d => d.name === "Yes")?.value || 0) / ((achievableData.find(d => d.name === "Yes")?.value || 0) + (achievableData.find(d => d.name === "No")?.value || 0) || 1) * 100)}%
+												</span>
+												<span className="text-xs text-muted-foreground uppercase tracking-wider">Yes</span>
+											</div>
+										</div>
+										<div className="flex gap-6 mt-4">
+											{achievableData.map((entry, index) => (
+												<div key={entry.name} className="flex items-center gap-2">
+													<div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS_ACHIEVABLE[index % COLORS_ACHIEVABLE.length] }} />
+													<span className="text-sm font-medium text-muted-foreground">{entry.name}</span>
+												</div>
+											))}
+										</div>
+									</CardContent>
+								</Card>
+							</motion.div>
 
-					<div className="grid grid-cols-3 gap-4 mt-4">
-						{dateData.map((entry) => (
-							<div key={entry.name} className="text-center">
-								<div className="font-medium">{entry.name}</div>
-								<div className="text-2xl font-bold">{entry.date}</div>
-							</div>
-						))}
-					</div>
+							{/* Analysis Section */}
+							<motion.div variants={itemVariants} className="lg:col-span-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+								<ConsensusMeter
+									title="AGI Bubble"
+									yesCount={bubbleData.find(d => d.name === "Yes")?.value || 0}
+									noCount={bubbleData.find(d => d.name === "No")?.value || 0}
+								/>
+								<ConsensusMeter
+									title="Achievability"
+									yesCount={achievableData.find(d => d.name === "Yes")?.value || 0}
+									noCount={achievableData.find(d => d.name === "No")?.value || 0}
+								/>
+								<PredictionSpread
+									earliest={predictionStats.earliest}
+									latest={predictionStats.latest}
+									median={predictionStats.median}
+								/>
+							</motion.div>
 
-					<div className="mt-8">
-						<h3 className="text-lg font-semibold mb-2">
-							AGI Timeline Distribution
-						</h3>
-						<div className="flex justify-center w-full mt-6 overflow-x-auto">
-							<ResponsiveContainer width="100%" height={300} minWidth={300}>
-								<BarChart data={timelineData}>
-									<XAxis
-										dataKey="year"
-										label={{ value: "Year", position: "bottom" }}
-										domain={["dataMin", "dataMax"]}
-										type="number"
-										ticks={timelineData.map((d) => d.year)}
-									/>
-									<YAxis
-										label={{
-											angle: -90,
-											position: "left",
-										}}
-									/>
-									<Tooltip
-										labelFormatter={(year) => `Year: ${year}`}
-										formatter={(value) => [`${value} responses`]}
-									/>
-									<Bar dataKey="count" fill="#8884d8" />
-								</BarChart>
-							</ResponsiveContainer>
+							{/* Timeline Chart */}
+							<motion.div variants={itemVariants} className="lg:col-span-6">
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader>
+										<CardTitle className="flex items-center gap-2">
+											<TrendingUp className="w-5 h-5" /> AGI Timeline Distribution
+										</CardTitle>
+										<CardDescription>When does the community predict AGI will arrive?</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<div className="h-[300px] w-full">
+											<ResponsiveContainer width="100%" height="100%">
+												<BarChart data={timelineData}>
+													<XAxis
+														dataKey="year"
+														stroke="hsl(var(--muted-foreground))"
+														fontSize={12}
+														tickLine={false}
+														axisLine={false}
+													/>
+													<YAxis
+														stroke="hsl(var(--muted-foreground))"
+														fontSize={12}
+														tickLine={false}
+														axisLine={false}
+													/>
+													<Tooltip
+														cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+														contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+														itemStyle={{ color: 'hsl(var(--foreground))' }}
+													/>
+													<Bar
+														dataKey="count"
+														fill="hsl(var(--primary))"
+														radius={[4, 4, 0, 0]}
+													/>
+												</BarChart>
+											</ResponsiveContainer>
+										</div>
+									</CardContent>
+								</Card>
+							</motion.div>
+
+							{/* Word Cloud */}
+							<motion.div variants={itemVariants} className="lg:col-span-6">
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader>
+										<CardTitle>Community Thoughts</CardTitle>
+										<CardDescription>Most frequently mentioned words in comments</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<div id="word-cloud" className="w-full flex justify-center overflow-hidden" />
+									</CardContent>
+								</Card>
+							</motion.div>
 						</div>
-					</div>
+					)}
+				</motion.div>
 
-					<div className="mt-8">
-						<h3 className="text-lg font-semibold mb-2">
-							Most Frequently Mentioned Words
-						</h3>
-						<div id="word-cloud" className="w-full overflow-hidden" />
-					</div>
-				</CardContent>
-			</Card>
-			<Button
-				onClick={handleFormClick}
-				className="mt-6 w-full max-w-4xl text-lg py-6"
-				size="lg"
-				variant="default"
-			>
-				<span className="mr-2 animate-pulse">Take the Survey →</span>
-			</Button>
 
-			<Button
-				onClick={async () => {
-					try {
-						if (navigator.share) {
-							await navigator.share({
-								title: "AGI Bubble Survey",
-								text: "Check out this survey about AGI predictions!",
-								url: window.location.href,
-							});
-						} else {
-							// Fallback to copying to clipboard
-							await navigator.clipboard.writeText(window.location.href);
-							alert("Link copied to clipboard!");
-						}
-					} catch (error) {
-						console.error("Error sharing:", error);
-						// Fallback to copying to clipboard if sharing fails
-						try {
-							await navigator.clipboard.writeText(window.location.href);
-							alert("Link copied to clipboard!");
-						} catch (err) {
-							console.error("Error copying to clipboard:", err);
-						}
-					}
-				}}
-				className="mt-4 w-full max-w-4xl text-lg py-6 bg-blue-500 hover:bg-blue-600"
-				size="lg"
-				variant="default"
-			>
-				<span className="mr-2">Share</span>
-			</Button>
-
-			<div className="text-sm mt-4">
-				Created by{" "}
-				<a href="https://eonurk.com" target="_blank" rel="noopener noreferrer">
-					@eonurk
-				</a>
-			</div>
+			</main>
+			<Footer />
 		</div>
 	);
 }
