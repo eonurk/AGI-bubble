@@ -49,6 +49,13 @@ function App() {
 	// New state for analysis components
 	const [predictionStats, setPredictionStats] = useState({ earliest: 0, latest: 0, median: 0 });
 
+	// Advanced Analysis State
+	const [advancedStats, setAdvancedStats] = useState({
+		goldenYear: 0,
+		confidenceScore: 0,
+		decadeData: [] as { name: string; value: number }[]
+	});
+
 	useEffect(() => {
 		const fetchData = async () => {
 			setIsLoading(true);
@@ -112,6 +119,43 @@ function App() {
 				years.forEach(y => yearCounts[y] = (yearCounts[y] || 0) + 1);
 
 				setTimelineData(Object.entries(yearCounts).map(([year, count]) => ({ year: parseInt(year), count })));
+
+				// Advanced Analysis Calculations
+				if (years.length > 0) {
+					// 1. Golden Year (Mode)
+					let maxCount = 0;
+					let modeYear = years[0];
+					for (const year in yearCounts) {
+						if (yearCounts[year] > maxCount) {
+							maxCount = yearCounts[year];
+							modeYear = parseInt(year);
+						}
+					}
+
+					// 2. Confidence Score (StdDev based)
+					const mean = years.reduce((a, b) => a + b, 0) / years.length;
+					const variance = years.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / years.length;
+					const stdDev = Math.sqrt(variance);
+					// Map StdDev to 0-100. Assuming StdDev > 20 is 0 confidence.
+					const confidence = Math.max(0, Math.min(100, Math.round(100 - (stdDev * 4))));
+
+					// 3. Decade Horizon
+					const decades: { [key: string]: number } = {};
+					years.forEach(y => {
+						const decade = Math.floor(y / 10) * 10;
+						const label = `${decade}s`;
+						decades[label] = (decades[label] || 0) + 1;
+					});
+					const decadeData = Object.entries(decades)
+						.map(([name, value]) => ({ name, value }))
+						.sort((a, b) => parseInt(a.name) - parseInt(b.name));
+
+					setAdvancedStats({
+						goldenYear: modeYear,
+						confidenceScore: confidence,
+						decadeData
+					});
+				}
 
 			} catch (error) {
 				console.error("Error fetching data:", error);
@@ -379,6 +423,51 @@ function App() {
 								/>
 							</motion.div>
 
+							{/* Advanced Analysis Section */}
+							<motion.div variants={itemVariants} className="lg:col-span-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium text-muted-foreground">The Golden Year</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="text-3xl font-bold text-primary">{advancedStats.goldenYear || "..."}</div>
+										<p className="text-xs text-muted-foreground mt-1">Most predicted year</p>
+									</CardContent>
+								</Card>
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium text-muted-foreground">Confidence Score</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="text-3xl font-bold text-primary">{advancedStats.confidenceScore}%</div>
+										<div className="w-full bg-secondary h-1.5 mt-2 rounded-full overflow-hidden">
+											<div className="bg-primary h-full rounded-full" style={{ width: `${advancedStats.confidenceScore}%` }} />
+										</div>
+										<p className="text-xs text-muted-foreground mt-1">Based on prediction spread</p>
+									</CardContent>
+								</Card>
+								<Card className="bg-card/50 backdrop-blur border-primary/10">
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium text-muted-foreground">Decade Horizon</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="space-y-2">
+											{advancedStats.decadeData.slice(0, 3).map((d) => (
+												<div key={d.name} className="flex items-center justify-between text-sm">
+													<span className="text-muted-foreground">{d.name}</span>
+													<div className="flex items-center gap-2 flex-1 mx-3">
+														<div className="h-1.5 bg-secondary rounded-full flex-1 overflow-hidden">
+															<div className="h-full bg-primary/70 rounded-full" style={{ width: `${(d.value / totalResponses) * 100}%` }} />
+														</div>
+													</div>
+													<span className="font-medium">{d.value}</span>
+												</div>
+											))}
+										</div>
+									</CardContent>
+								</Card>
+							</motion.div>
+
 							{/* Timeline Chart */}
 							<motion.div variants={itemVariants} className="lg:col-span-6">
 								<Card className="bg-card/50 backdrop-blur border-primary/10">
@@ -437,8 +526,6 @@ function App() {
 						</div>
 					)}
 				</motion.div>
-
-
 			</main>
 			<Footer />
 		</div>
