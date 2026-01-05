@@ -12,6 +12,9 @@ import { PredictionSpread } from "@/components/PredictionSpread";
 import { PredictionComparator } from "@/components/PredictionComparator";
 import { Oracle } from "@/components/Oracle";
 import { Countdown } from "@/components/Countdown";
+import { ProbabilitySlider } from "@/components/ProbabilitySlider";
+import { NewsTicker } from "@/components/NewsTicker";
+import { CallToAction } from "@/components/CallToAction";
 import { Loader2, Share2, ExternalLink, TrendingUp, Calendar, MessageSquare, X } from "lucide-react";
 
 type TimelineDataPoint = {
@@ -263,6 +266,8 @@ function App() {
 	return (
 		<div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/20">
 			<Header />
+			
+			<NewsTicker prophecies={prophecies} />
 
 			<main className="flex-1 container mx-auto px-4 py-8 md:py-12 max-w-7xl">
 				<motion.div
@@ -554,22 +559,33 @@ function App() {
 								</Card>
 							</motion.div>
 
-							{/* Word Cloud */}
-							<motion.div variants={itemVariants} className="lg:col-span-6">
-								<Card className="bg-card/50 backdrop-blur border-primary/10">
-									<CardHeader>
-										<CardTitle>Community Thoughts</CardTitle>
-										<CardDescription>Most frequently mentioned words in comments</CardDescription>
-									</CardHeader>
-									<CardContent>
-										<div id="word-cloud" className="w-full flex justify-center overflow-hidden" />
-									</CardContent>
-								</Card>
+							{/* Interactive Exploration Row */}
+							<motion.div variants={itemVariants} className="lg:col-span-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+								{/* Probability Slider */}
+								<div className="lg:col-span-1">
+									<ProbabilitySlider years={rawYears} />
+								</div>
+								
+								{/* Word Cloud */}
+								<div className="lg:col-span-2">
+									<Card className="bg-card/50 backdrop-blur border-primary/10 h-full">
+										<CardHeader>
+											<CardTitle>Community Thoughts</CardTitle>
+											<CardDescription>Most frequently mentioned words in comments</CardDescription>
+										</CardHeader>
+										<CardContent>
+											<div id="word-cloud" className="w-full flex justify-center overflow-hidden" />
+										</CardContent>
+									</Card>
+								</div>
 							</motion.div>
 						</div>
 					)}
 				</motion.div>
 			</main>
+			
+			<CallToAction />
+			
 			<Footer />
 
 			{/* Word Context Modal */}
