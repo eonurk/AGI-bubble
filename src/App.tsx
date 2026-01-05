@@ -9,7 +9,10 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ConsensusMeter } from "@/components/ConsensusMeter";
 import { PredictionSpread } from "@/components/PredictionSpread";
-import { Loader2, Share2, ExternalLink, TrendingUp, Calendar, MessageSquare } from "lucide-react";
+import { PredictionComparator } from "@/components/PredictionComparator";
+import { Oracle } from "@/components/Oracle";
+import { Countdown } from "@/components/Countdown";
+import { Loader2, Share2, ExternalLink, TrendingUp, Calendar, MessageSquare, X } from "lucide-react";
 
 type TimelineDataPoint = {
 	year: number;
@@ -45,6 +48,11 @@ function App() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [totalResponses, setTotalResponses] = useState(0);
 	const [wordCloudData, setWordCloudData] = useState<WordData[]>([]);
+	const [allRemarks, setAllRemarks] = useState<string[]>([]);
+	const [selectedWord, setSelectedWord] = useState<string | null>(null);
+	const [rawYears, setRawYears] = useState<number[]>([]);
+	const [prophecies, setProphecies] = useState<{ year: number; remark: string }[]>([]);
+	const [medianDateStr, setMedianDateStr] = useState<string>("");
 
 	// New state for analysis components
 	const [predictionStats, setPredictionStats] = useState({ earliest: 0, latest: 0, median: 0 });
@@ -80,6 +88,12 @@ function App() {
 				const earliestYear = parseInt(getYear(rows[6]));
 				const latestYear = parseInt(getYear(rows[7]));
 				const medianYear = parseInt(getYear(rows[8]));
+				
+				// Capture exact median date string (Row 8, Column 1)
+				// Assuming format is present, otherwise fallback to standard year logic
+				if (rows[8] && rows[8][1]) {
+					setMedianDateStr(rows[8][1]);
+				}
 
 				setDateData([
 					{ name: "Earliest", date: isNaN(earliestYear) ? "N/A" : earliestYear.toString() },
@@ -93,8 +107,10 @@ function App() {
 					median: isNaN(medianYear) ? new Date().getFullYear() + 5 : medianYear,
 				});
 
-				const remarks = rows[12][1] || "";
-				const words = remarks.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !["and", "the", "this", "that", "with", "will", "have", "from"].includes(w));
+				setAllRemarks(rows[12].slice(1).filter(r => r && r.trim().length > 0));
+
+				const remarks = rows[12].slice(1).join(" ");
+				const words = remarks.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !["and", "the", "this", "that", "with", "will", "have", "from", "some", "more", "much", "they", "just", "about", "what", "like", "which", "there", "their"].includes(w));
 
 				const wordCount: { [key: string]: number } = {};
 				words.forEach(w => wordCount[w] = (wordCount[w] || 0) + 1);
@@ -102,7 +118,7 @@ function App() {
 				setWordCloudData(Object.entries(wordCount)
 					.map(([text, count]) => ({ text, size: 10 + count * 10 }))
 					.sort((a, b) => b.size - a.size)
-					.slice(0, 50));
+					.slice(0, 20));
 
 				setBubbleData([
 					{ name: "Yes", value: bubbleYes },
@@ -115,6 +131,17 @@ function App() {
 				]);
 
 				const years = rows[11].slice(1).map(y => parseInt(y.trim())).filter(y => !isNaN(y)).sort((a, b) => a - b);
+				setRawYears(years);
+
+				// Prepare Oracle Data (Paired Years & Remarks)
+				const rawYearList = rows[11].slice(1);
+				const rawRemarkList = rows[12].slice(1);
+				const validProphecies = rawYearList.map((y, i) => ({
+					year: parseInt(y.trim()),
+					remark: rawRemarkList[i]
+				})).filter(p => !isNaN(p.year) && p.remark && p.remark.trim().length > 5); // Filter for valid years and non-empty remarks
+				setProphecies(validProphecies);
+
 				const yearCounts: { [key: number]: number } = {};
 				years.forEach(y => yearCounts[y] = (yearCounts[y] || 0) + 1);
 
@@ -204,7 +231,17 @@ function App() {
 				.style("font-weight", "600")
 				.attr("text-anchor", "middle")
 				.attr("transform", (d: any) => `translate(${d.x},${d.y})rotate(${d.rotate})`)
-				.text(d => d.text);
+				.text(d => d.text)
+				.style("cursor", "pointer")
+				.on("click", (_event: any, d: any) => {
+					setSelectedWord(d.text);
+				})
+				.on("mouseover", (event: any) => {
+					d3.select(event.currentTarget).style("opacity", 0.7);
+				})
+				.on("mouseout", (event: any) => {
+					d3.select(event.currentTarget).style("opacity", 1);
+				});
 		}
 	}, [wordCloudData]);
 
@@ -271,7 +308,7 @@ function App() {
 						</div>
 					</motion.div>
 
-
+					<Countdown targetDate={medianDateStr} />
 
 					{isLoading ? (
 						<div className="flex flex-col items-center justify-center h-[400px] space-y-4">
@@ -423,6 +460,12 @@ function App() {
 								/>
 							</motion.div>
 
+							{/* Interactive Comparator & Oracle */}
+							<motion.div variants={itemVariants} className="lg:col-span-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+								<PredictionComparator years={rawYears} />
+								<Oracle prophecies={prophecies} />
+							</motion.div>
+
 							{/* Advanced Analysis Section */}
 							<motion.div variants={itemVariants} className="lg:col-span-6 grid grid-cols-1 md:grid-cols-3 gap-6">
 								<Card className="bg-card/50 backdrop-blur border-primary/10">
@@ -528,6 +571,43 @@ function App() {
 				</motion.div>
 			</main>
 			<Footer />
+
+			{/* Word Context Modal */}
+			{selectedWord && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setSelectedWord(null)}>
+					<motion.div
+						initial={{ opacity: 0, scale: 0.9 }}
+						animate={{ opacity: 1, scale: 1 }}
+						className="bg-card border border-border w-full max-w-2xl max-h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden"
+						onClick={e => e.stopPropagation()}
+					>
+						<div className="p-4 border-b border-border flex justify-between items-center bg-muted/20">
+							<h3 className="font-bold text-lg">
+								Mentions of <span className="text-primary">"{selectedWord}"</span>
+							</h3>
+							<Button variant="ghost" size="icon" onClick={() => setSelectedWord(null)}>
+								<X className="w-5 h-5" />
+							</Button>
+						</div>
+						<div className="p-4 overflow-y-auto space-y-3">
+							{allRemarks
+								.filter(r => r.toLowerCase().includes(selectedWord.toLowerCase()))
+								.map((remark, i) => (
+									<div key={i} className="p-3 rounded-lg bg-secondary/30 border border-border/50 text-sm leading-relaxed">
+										{remark.split(new RegExp(`(${selectedWord})`, 'gi')).map((part, j) => 
+											part.toLowerCase() === selectedWord.toLowerCase() ? 
+												<span key={j} className="bg-primary/20 text-primary font-bold px-1 rounded">{part}</span> : 
+												part
+										)}
+									</div>
+								))}
+							{allRemarks.filter(r => r.toLowerCase().includes(selectedWord.toLowerCase())).length === 0 && (
+								<p className="text-muted-foreground text-center py-8">No specific comments found.</p>
+							)}
+						</div>
+					</motion.div>
+				</div>
+			)}
 		</div>
 	);
 }
