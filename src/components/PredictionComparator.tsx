@@ -67,9 +67,7 @@ export function PredictionComparator({ years }: PredictionComparatorProps) {
 	};
 
 	return (
-		<Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 backdrop-blur overflow-hidden relative">
-			<div className="absolute top-0 right-0 p-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
+		<Card className="bg-card/50 backdrop-blur border-primary/10">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2 text-xl">
 					<Calculator className="w-5 h-5 text-primary" /> Where do you stand?
@@ -112,8 +110,8 @@ export function PredictionComparator({ years }: PredictionComparatorProps) {
 							<div
 								className={`p-2 rounded-full ${
 									result.isOptimist
-										? "bg-green-500/10 text-green-500"
-										: "bg-orange-500/10 text-orange-500"
+										? "bg-emerald-500/10 text-emerald-600"
+										: "bg-amber-500/10 text-amber-600"
 								}`}
 							>
 								{result.isOptimist ? (

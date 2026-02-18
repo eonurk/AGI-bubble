@@ -38,11 +38,11 @@ export function ProbabilitySlider({ years }: ProbabilitySliderProps) {
 
     const getPhaseColor = (prob: number) => {
         if (prob < 10) return "text-muted-foreground";
-        if (prob < 30) return "text-blue-500";
-        if (prob < 50) return "text-yellow-500";
-        if (prob < 70) return "text-orange-500";
-        if (prob < 90) return "text-red-500";
-        return "text-purple-500";
+        if (prob < 30) return "text-blue-600";
+        if (prob < 50) return "text-amber-600";
+        if (prob < 70) return "text-orange-600";
+        if (prob < 90) return "text-red-600";
+        return "text-emerald-600";
     };
 
     return (
@@ -60,7 +60,7 @@ export function ProbabilitySlider({ years }: ProbabilitySliderProps) {
                         Chance of AGI by <span className="text-foreground font-bold">{sliderValue}</span>
                     </p>
                     <div className="flex items-center justify-center gap-1">
-                        <span className={`text-6xl font-black tabular-nums tracking-tighter transition-colors duration-300 ${getPhaseColor(probability)}`}>
+                        <span className={`text-5xl md:text-6xl font-black tabular-nums tracking-tighter transition-colors duration-300 ${getPhaseColor(probability)}`}>
                             {probability}%
                         </span>
                     </div>

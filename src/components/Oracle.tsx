@@ -19,10 +19,10 @@ export function Oracle({ prophecies }: OracleProps) {
     const [isThinking, setIsThinking] = useState(false);
 
     const archetypes = [
-        { max: 2027, name: "The Accelerationist", color: "text-red-500", bg: "bg-red-500/10" },
-        { max: 2032, name: "The Realist", color: "text-blue-500", bg: "bg-blue-500/10" },
-        { max: 2040, name: "The Skeptic", color: "text-yellow-500", bg: "bg-yellow-500/10" },
-        { max: 9999, name: "The Long-Termist", color: "text-green-500", bg: "bg-green-500/10" },
+        { max: 2027, name: "The Accelerationist", color: "text-red-600", bg: "bg-red-500/10" },
+        { max: 2032, name: "The Realist", color: "text-blue-600", bg: "bg-blue-500/10" },
+        { max: 2040, name: "The Skeptic", color: "text-amber-600", bg: "bg-amber-500/10" },
+        { max: 9999, name: "The Long-Termist", color: "text-emerald-600", bg: "bg-emerald-500/10" },
     ];
 
     const consultOracle = () => {
@@ -45,18 +45,14 @@ export function Oracle({ prophecies }: OracleProps) {
     };
 
     return (
-        <Card className="bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 border-purple-500/20 backdrop-blur overflow-hidden relative min-h-[300px] flex flex-col justify-center">
-            {/* Background Effects */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
-
+        <Card className="bg-card/50 backdrop-blur border-primary/10 overflow-hidden min-h-[300px] flex flex-col justify-center">
             <CardHeader className="text-center pb-2">
-                <CardTitle className="flex items-center justify-center gap-2 text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-pink-500">
-                    <Sparkles className="w-5 h-5 text-purple-500" /> The AGI Oracle
+                <CardTitle className="flex items-center justify-center gap-2 text-xl font-bold text-foreground">
+                    <Sparkles className="w-5 h-5 text-primary" /> The AGI Oracle
                 </CardTitle>
             </CardHeader>
 
-            <CardContent className="flex flex-col items-center justify-center flex-1 p-6 relative">
+            <CardContent className="flex flex-col items-center justify-center flex-1 p-6">
                 <AnimatePresence mode="wait">
                     {!currentProphecy && !isThinking && (
                         <motion.div
@@ -71,8 +67,7 @@ export function Oracle({ prophecies }: OracleProps) {
                             </p>
                             <Button 
                                 onClick={consultOracle}
-                                size="lg" 
-                                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-0 shadow-lg shadow-purple-500/20"
+                                size="lg"
                             >
                                 Consult the Oracle
                             </Button>
@@ -88,12 +83,12 @@ export function Oracle({ prophecies }: OracleProps) {
                             className="flex flex-col items-center gap-4"
                         >
                             <div className="relative">
-                                <div className="w-12 h-12 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+                                <div className="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+                                    <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                                 </div>
                             </div>
-                            <p className="text-sm text-purple-500 font-medium animate-pulse">Divining the future...</p>
+                            <p className="text-sm text-muted-foreground font-medium animate-pulse">Divining the future...</p>
                         </motion.div>
                     )}
 
@@ -120,18 +115,18 @@ export function Oracle({ prophecies }: OracleProps) {
                             </div>
 
                             <div className="relative p-6 rounded-xl bg-background/50 border border-border/50 shadow-inner">
-                                <Quote className="absolute top-3 left-3 w-6 h-6 text-purple-500/20 rotate-180" />
+                                <Quote className="absolute top-3 left-3 w-6 h-6 text-primary/20 rotate-180" />
                                 <p className="text-center italic text-foreground/90 font-medium leading-relaxed px-4">
                                     "{currentProphecy.remark}"
                                 </p>
-                                <Quote className="absolute bottom-3 right-3 w-6 h-6 text-purple-500/20" />
+                                <Quote className="absolute bottom-3 right-3 w-6 h-6 text-primary/20" />
                             </div>
 
                             <div className="flex justify-center">
                                 <Button 
                                     variant="outline" 
                                     onClick={consultOracle}
-                                    className="hover:bg-purple-500/5 hover:text-purple-600 hover:border-purple-200"
+                                    className="hover:bg-primary/5 hover:text-primary hover:border-primary/20"
                                 >
                                     Reveal Another
                                 </Button>
